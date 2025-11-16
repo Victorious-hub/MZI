@@ -1,20 +1,9 @@
-"""Pure Python implementation of the SHA-1 hash function.
-
-The implementation follows the reference algorithm described in the
-SHA-1 specification (FIPS PUB 180-4). It supports incremental updates in
-the style of :mod:`hashlib` objects and exposes convenience helpers for
-one-shot hashing.
-"""
-
 from __future__ import annotations
-
-import argparse
 from typing import Optional, Union
 
 
 _SHA1InitialState = tuple[int, int, int, int, int]
 BufferLike = Union[bytes, bytearray, memoryview]
-
 
 def _to_bytes(data: BufferLike) -> bytes:
 	"""Return the input as bytes, raising ``TypeError`` for unsupported types."""
@@ -31,14 +20,6 @@ def _to_bytes(data: BufferLike) -> bytes:
 
 
 class SHA1:
-	"""Streaming SHA-1 hash object.
-
-	Parameters
-	----------
-	data:
-		Optional initial chunk of data to hash.
-	"""
-
 	_h0: int = 0x67452301
 	_h1: int = 0xEFCDAB89
 	_h2: int = 0x98BADCFE
@@ -62,13 +43,7 @@ class SHA1:
 		if data is not None:
 			self.update(data)
 
-	# --- Public API -------------------------------------------------
 	def update(self, data: BufferLike) -> "SHA1":
-		"""Update the current hash state with ``data``.
-
-		Returns ``self`` to enable fluent-style chains.
-		"""
-
 		chunk = _to_bytes(data)
 		self._message_byte_length += len(chunk)
 
@@ -81,8 +56,6 @@ class SHA1:
 		return self
 
 	def digest(self) -> bytes:
-		"""Return the raw hash digest of the data processed so far."""
-
 		h0, h1, h2, h3, h4 = self._h0, self._h1, self._h2, self._h3, self._h4
 		unprocessed = self._unprocessed
 		total_length = self._message_byte_length
@@ -103,13 +76,9 @@ class SHA1:
 		return b"".join(word.to_bytes(4, "big") for word in (h0, h1, h2, h3, h4))
 
 	def hexdigest(self) -> str:
-		"""Return the hexadecimal digest string."""
-
 		return self.digest().hex()
 
 	def copy(self) -> "SHA1":
-		"""Return a deep copy of the current hash object."""
-
 		clone = SHA1()
 		clone._h0, clone._h1, clone._h2, clone._h3, clone._h4 = (
 			self._h0,
@@ -122,20 +91,16 @@ class SHA1:
 		clone._message_byte_length = self._message_byte_length
 		return clone
 
-	# Convenience helpers -------------------------------------------------
 	@classmethod
 	def hash(cls, data: BufferLike) -> bytes:
 		"""Return the SHA-1 digest for ``data`` as raw bytes."""
-
 		return cls(data).digest()
 
 	@classmethod
 	def hexdigest_from(cls, data: BufferLike) -> str:
 		"""Return the SHA-1 digest for ``data`` as a hex string."""
-
 		return cls(data).hexdigest()
 
-	# --- Internal helpers -------------------------------------------
 	def _process_block(
 		self,
 		block: bytes,
@@ -197,35 +162,14 @@ class SHA1:
 
 
 def sha1(data: BufferLike) -> bytes:
-	"""Convenience wrapper returning the SHA-1 digest for ``data``."""
-
 	return SHA1.hash(data)
 
 
 def sha1_hex(data: BufferLike) -> str:
-	"""Return the hex digest of the SHA-1 hash for ``data``."""
-
 	return SHA1.hexdigest_from(data)
 
 
 def hash_file(input_path: str, output_path: str, chunk_size: int = 8192) -> str:
-	"""Hash the contents of ``input_path`` and write the hex digest to ``output_path``.
-
-	Parameters
-	----------
-	input_path:
-		Path to the source file (read in binary mode).
-	output_path:
-		Path to the destination file (written in text mode with UTF-8 encoding).
-	chunk_size:
-		Size of the chunks used when streaming the input file.
-
-	Returns
-	-------
-	str
-		The computed SHA-1 hex digest.
-	"""
-
 	hasher = SHA1()
 	with open(input_path, "rb") as src:
 		while True:
@@ -241,37 +185,11 @@ def hash_file(input_path: str, output_path: str, chunk_size: int = 8192) -> str:
 
 	return hex_digest
 
-
-def _build_arg_parser() -> argparse.ArgumentParser:
-	parser = argparse.ArgumentParser(
-		description="Compute SHA-1 digest for a file and write it to an output file.",
-	)
-	parser.add_argument(
-		"input",
-		nargs="?",
-		default="input.txt",
-		help="Path to the input file (default: input.txt)",
-	)
-	parser.add_argument(
-		"output",
-		nargs="?",
-		default="sha_output.txt",
-		help="Path to the output file where the hex digest will be stored (default: sha_output.txt)",
-	)
-	parser.add_argument(
-		"--chunk-size",
-		type=int,
-		default=8192,
-		help="Size of the read buffer in bytes (default: 8192)",
-	)
-	return parser
-
-
-def main() -> None:
-	args = _build_arg_parser().parse_args()
-	hex_digest = hash_file(args.input, args.output, args.chunk_size)
-	print(f"SHA-1({args.input}) = {hex_digest}")
-
+def sha1_text(text: str, encoding: str = "utf-8") -> str:
+    data = text.encode(encoding)
+    return SHA1(data).hexdigest()
 
 if __name__ == "__main__":
-	main()
+    s = ""
+    print("Текст:", repr(s))
+    print("SHA-1:", sha1_text(s))

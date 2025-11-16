@@ -5,7 +5,6 @@ import os
 import sys
 from typing import Iterable, List
 
-
 PI: List[int] = [
     252, 238, 221, 17, 207, 110, 49, 22, 251, 196, 250, 218, 35, 197, 4, 77,
     233, 119, 240, 219, 147, 46, 153, 186, 23, 54, 241, 187, 20, 205, 95, 193,
@@ -82,7 +81,6 @@ def _add_mod_2_512(a: bytes, b: int) -> bytes:
 def _add_vectors(a: bytes, b: bytes) -> bytes:
     value = (int.from_bytes(a, "big") + int.from_bytes(b, "big")) % (1 << 512)
     return value.to_bytes(64, "big")
-
 
 def _s_transform(vector: bytes) -> bytes:
     return bytes(PI[value] for value in vector)
@@ -282,5 +280,5 @@ def main(argv: Iterable[str] | None = None) -> int:
 
 
 if __name__ == "__main__":  # pragma: no cover
-
+    print(manual_vector_1())
     raise SystemExit(main())

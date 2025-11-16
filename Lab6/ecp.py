@@ -1,10 +1,3 @@
-"""Minimal GOST R 34.10-2012 CLI without auxiliary examples.
-
-This script focuses on signing and verifying messages using explicit
-hexadecimal parameters (message, private key, and public key).  It relies on
-the Streebog hash implementation provided by :mod:`main`.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -13,10 +6,6 @@ from dataclasses import dataclass
 from typing import Callable, Iterable, Optional, Tuple
 
 from gost34_11 import streebog
-
-
-# --- Elliptic curve primitives -------------------------------------------------
-
 
 def _mod_inv(value: int, modulus: int) -> int:
     value %= modulus
@@ -38,6 +27,22 @@ class CurveParameters:
     def base_point(self) -> "Point":
         return Point(self.x_p, self.y_p, self)
 
+RFC_TEST_CURVE = CurveParameters(
+    p=int(
+        "57896044618658097711785492504343953926634992332820282019728792003956564821041"
+    ),
+    a=7,
+    b=int(
+        "43308876546767276905765904595650931995942111794451039583252968842033849580414"
+    ),
+    q=int(
+        "57896044618658097711785492504343953927082934583725450622380973592137631069619"
+    ),
+    x_p=2,
+    y_p=int(
+        "4018974056539037503335449422937059775635739389905545080690979365213431566280"
+    ),
+)
 
 class Point:
     __slots__ = ("x", "y", "curve")
@@ -49,7 +54,6 @@ class Point:
 
 
 PointOrInfinity = Optional[Point]
-
 
 def _point_add(p1: PointOrInfinity, p2: PointOrInfinity) -> PointOrInfinity:
     if p1 is None:
@@ -85,6 +89,7 @@ def _scalar_mul(k: int, point: PointOrInfinity) -> PointOrInfinity:
     addend: PointOrInfinity = point
     k %= point.curve.q
 
+    # Цикл двоичного умножения:
     while k:
         if k & 1:
             result = _point_add(result, addend)
@@ -92,15 +97,10 @@ def _scalar_mul(k: int, point: PointOrInfinity) -> PointOrInfinity:
         k >>= 1
     return result
 
-
-# --- Signature routines -------------------------------------------------------
-
-
 def _hash_to_int(message: bytes, curve: CurveParameters, digest_size: int) -> int:
     digest = streebog(message, digest_size)
     e = int.from_bytes(digest, "big") % curve.q
     return e or 1
-
 
 def sign(
     message: bytes,
@@ -116,6 +116,7 @@ def sign(
     e = _hash_to_int(message, curve, digest_size)
     rand = randfunc or (lambda upper: secrets.randbelow(upper - 1) + 1)
 
+    # Генерируем случайное k (через secrets.randbelow() или детерминированно для тестов).
     while True:
         k = rand(curve.q)
         if not (0 < k < curve.q):
@@ -129,7 +130,8 @@ def sign(
         s = (r * private_key + k * e) % curve.q
         if s == 0:
             continue
-        return r, s
+
+        return r, s # signature
 
 
 def verify(
@@ -158,31 +160,6 @@ def verify(
     if c is None:
         return False
     return c.x % curve.q == r
-
-
-# --- RFC test parameters ------------------------------------------------------
-
-
-RFC_TEST_CURVE = CurveParameters(
-    p=int(
-        "57896044618658097711785492504343953926634992332820282019728792003956564821041"
-    ),
-    a=7,
-    b=int(
-        "43308876546767276905765904595650931995942111794451039583252968842033849580414"
-    ),
-    q=int(
-        "57896044618658097711785492504343953927082934583725450622380973592137631069619"
-    ),
-    x_p=2,
-    y_p=int(
-        "4018974056539037503335449422937059775635739389905545080690979365213431566280"
-    ),
-)
-
-
-# --- CLI helpers --------------------------------------------------------------
-
 
 def _parse_int(value: str) -> int:
     text = value.strip().lower()
@@ -226,10 +203,6 @@ def _rand_from_hex(value: Optional[str]) -> Optional[Callable[[int], int]]:
     scalar = _parse_int(value)
     return lambda upper: scalar % upper or upper - 1
 
-
-# --- Command handlers ---------------------------------------------------------
-
-
 def _cmd_sign(args: argparse.Namespace) -> None:
     message = _parse_hex_bytes(args.message_hex)
     private_key = _parse_int(args.private_key)
@@ -264,10 +237,6 @@ def _cmd_verify(args: argparse.Namespace) -> None:
         digest_size=args.digest,
     )
     print("VALID" if valid else "INVALID")
-
-
-# --- CLI ----------------------------------------------------------------------
-
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
